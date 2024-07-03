@@ -8,9 +8,9 @@ import re
 from urllib.parse import unquote
 
 # Set your API keys
-os.environ["GOOGLE_API_KEY"] = "your-api-key-here"
-os.environ["GOOGLE_CSE_ID"] = "your-api-key-here"
-os.environ["ANTHROPIC_API_KEY"] = "your-api-key-here"
+os.environ["GOOGLE_API_KEY"] = "your_google_api_key_here"
+os.environ["GOOGLE_CSE_ID"] = "your_google_cse_id_here"
+os.environ["ANTHROPIC_API_KEY"] = "your_anthropic_api_key_here"
 
 # Initialize Google Custom Search API
 def google_search(query, api_key, cse_id, **kwargs):
