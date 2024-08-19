@@ -7,11 +7,10 @@ import anthropic
 import re
 from urllib.parse import unquote
 
-# Set your API keys
-os.environ["GOOGLE_API_KEY"] = "your_google_api_key_here"
-os.environ["GOOGLE_CSE_ID"] = "your_google_cse_id_here"
-os.environ["ANTHROPIC_API_KEY"] = "your_anthropic_api_key_here"
-api_key = os.getenv("ANTHROPIC_API_KEY")
+# API 키를 st.secrets에서 가져옵니다
+GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+GOOGLE_CSE_ID = st.secrets["GOOGLE_CSE_ID"]
+ANTHROPIC_API_KEY = st.secrets["ANTHROPIC_API_KEY"]
 
 # Initialize Google Custom Search API
 def google_search(query, api_key, cse_id, **kwargs):
