@@ -11,6 +11,7 @@ from urllib.parse import unquote
 os.environ["GOOGLE_API_KEY"] = "your_google_api_key_here"
 os.environ["GOOGLE_CSE_ID"] = "your_google_cse_id_here"
 os.environ["ANTHROPIC_API_KEY"] = "your_anthropic_api_key_here"
+api_key = os.getenv("ANTHROPIC_API_KEY")
 
 # Initialize Google Custom Search API
 def google_search(query, api_key, cse_id, **kwargs):
