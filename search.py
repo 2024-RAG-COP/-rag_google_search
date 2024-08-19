@@ -11,28 +11,44 @@ GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 GOOGLE_CSE_ID = st.secrets["GOOGLE_CSE_ID"]
 ANTHROPIC_API_KEY = st.secrets["ANTHROPIC_API_KEY"]
 
-# Initialize Google Custom Search API
+# Initialize Anthropic client
+client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+
+# Utility functions
+def clean_text(text):
+    text = re.sub(r'<[^>]+>', '', text)
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
+
+def format_url(url):
+    decoded_url = unquote(url)
+    if len(decoded_url) > 70:
+        return decoded_url[:70] + "..."
+    return decoded_url
+
+def format_answer(answer):
+    if isinstance(answer, list) and len(answer) > 0 and hasattr(answer[0], 'text'):
+        text = answer[0].text
+    else:
+        text = str(answer)
+    text = re.sub(r'\n+', '\n', text)
+    lines = [line.strip() for line in text.split('\n') if line.strip()]
+    return '\n\n'.join(lines)
+
+# Main functions
 def google_search(query, api_key, cse_id, **kwargs):
     service = build("customsearch", "v1", developerKey=api_key)
     res = service.cse().list(q=query, cx=cse_id, **kwargs).execute()
     return res.get('items', [])
 
-# Web scraping function
 def scrape_content(url):
     try:
         response = requests.get(url, timeout=5)
         soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # Extract text from p, h1, h2, h3 tags
         text = ' '.join([tag.get_text() for tag in soup.find_all(['p', 'h1', 'h2', 'h3'])])
-        
-        # Limit to first 1000 characters
         return text[:1000]
     except:
         return "Failed to scrape content"
-
-# Initialize Anthropic client
-client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 def generate_related_queries(question):
     prompt = f"""
@@ -89,62 +105,44 @@ def generate_answer(question, search_results, related_queries):
         ]
     )
     
-    content = message.content
-    if isinstance(content, str):
-        return content
-    elif isinstance(content, list) and len(content) > 0 and hasattr(content[0], 'text'):
-        return content[0].text
-    else:
-        return "Sorry, I couldn't generate an answer at this time."
-
-# ... (나머지 유틸리티 함수들은 그대로 유지) ...
+    return message.content
 
 # Streamlit UI
 st.title("AI-Powered Q&A System with Related Queries")
 
-# User input
 user_question = st.text_input("Enter your question:")
 
 if user_question:
     try:
-        # Generate related queries
-        related_queries = generate_related_queries(user_question)
+        with st.spinner("Generating related queries..."):
+            related_queries = generate_related_queries(user_question)
         
-        # Perform searches
-        all_search_results = []
-        for query in [user_question] + related_queries:
-            results = google_search(
-                query, 
-                GOOGLE_API_KEY,
-                GOOGLE_CSE_ID, 
-                num=3
-            )
-            all_search_results.extend(results)
-        
-        # Prepare search results for Claude
-        combined_results = []
-        for item in all_search_results:
-            title = item.get('title', 'No title')
-            link = item.get('link', 'No link')
-            content = scrape_content(link)
-            combined_results.append(f"Title: {title}\nURL: {link}\nContent: {content}\n")
-        
-        combined_results_str = "\n".join(combined_results)
+        with st.spinner("Searching and scraping content..."):
+            all_search_results = []
+            for query in [user_question] + related_queries:
+                results = google_search(query, GOOGLE_API_KEY, GOOGLE_CSE_ID, num=3)
+                all_search_results.extend(results)
+            
+            combined_results = []
+            for item in all_search_results:
+                title = item.get('title', 'No title')
+                link = item.get('link', 'No link')
+                content = scrape_content(link)
+                combined_results.append(f"Title: {title}\nURL: {link}\nContent: {content}\n")
+            
+            combined_results_str = "\n".join(combined_results)
 
-        # Generate answer using Claude
-        response = generate_answer(user_question, combined_results_str, related_queries)
+        with st.spinner("Generating answer..."):
+            response = generate_answer(user_question, combined_results_str, related_queries)
 
-        # Display the answer
         st.subheader("Answer:")
         formatted_answer = format_answer(response)
         st.markdown(formatted_answer)
 
-        # Display related queries
         st.subheader("Related Queries:")
         for query in related_queries:
             st.write(f"- {query}")
 
-        # Display search results
         st.subheader("Search Results and Scraped Content:")
         for item in all_search_results:
             with st.expander(f"Title: {item.get('title', 'No title')}"):
